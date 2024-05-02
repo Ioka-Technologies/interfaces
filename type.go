@@ -5,16 +5,19 @@ import (
 	"go/types"
 	"path"
 	"strings"
+
+	"golang.org/x/tools/go/packages"
 )
 
 // Type is a simple representation of a single parameter type.
 type Type struct {
-	Name        string `json:"name,omitempty"`        // type name
-	Package     string `json:"package,omitempty"`     // package name the type is defined in; empty for builtin
-	ImportPath  string `json:"importPath,omitempty"`  // import path of the package
-	IsPointer   bool   `json:"isPointer,omitempty"`   // whether the parameter is a pointer
-	IsComposite bool   `json:"isComposite,omitempty"` // whether the type is map, slice, chan or array
-	IsFunc      bool   `json:"isFunc,omitempty"`      // whether the type if function
+	Name        string   `json:"name,omitempty"`        // type name
+	Package     string   `json:"package,omitempty"`     // package name the type is defined in; empty for builtin
+	ImportPath  string   `json:"importPath,omitempty"`  // import path of the package
+	Deps        []string `json:"deps,omitempty"`        // dependencies of the type
+	IsPointer   bool     `json:"isPointer,omitempty"`   // whether the parameter is a pointer
+	IsComposite bool     `json:"isComposite,omitempty"` // whether the type is map, slice, chan or array
+	IsFunc      bool     `json:"isFunc,omitempty"`      // whether the type if function
 }
 
 // String gives Go code representation of the type.
@@ -102,7 +105,21 @@ func (typ *Type) setFromNamed(t *types.Named) {
 		if typeArgs := t.TypeArgs(); typeArgs != nil && typeArgs.Len() > 0 {
 			argValues := make([]string, typeArgs.Len())
 			for i := 0; i < typeArgs.Len(); i++ {
-				argValues[i] = typeArgs.At(i).String()
+				t := typeArgs.At(i)
+				q, _ := ParseQuery(t.String())
+				cfg := &packages.Config{
+					Mode:  packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps,
+					Tests: true,
+				}
+				pkgs, err := packages.Load(cfg, q.Package)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+
+				typ.Deps = append(typ.Deps, pkgs[0].Types.Path())
+
+				argValues[i] = fmt.Sprintf("%s.%s", pkgs[0].Types.Name(), q.TypeName)
 			}
 			typ.Name = fmt.Sprintf("%s[%s]", typ.Name, strings.Join(argValues, ", "))
 		}

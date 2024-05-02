@@ -92,6 +92,8 @@ func run() error {
 	}
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
+		fmt.Println(buf.String())
+		fmt.Println("Failed to format the above code")
 		return err
 	}
 	f := os.Stdout
