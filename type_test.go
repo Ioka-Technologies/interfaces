@@ -222,7 +222,10 @@ func Test_fixup(t *testing.T) {
 
 	for k, c := range cases {
 		t.Run(k, func(t *testing.T) {
-			fixup(c.typ, c.q)
+			options := &Options{
+				Query: c.q,
+			}
+			fixup(c.typ, options)
 
 			if c.typ.Name != c.fixed {
 				t.Errorf("invalid fixedup result. got:%s want:%s", c.typ.Name, c.fixed)

@@ -18,6 +18,8 @@ func TestBuild(t *testing.T) {
 	}
 	defer os.RemoveAll(gopath)
 
+	os.Setenv("GOCACHE", gopath)
+
 	src := filepath.Join(gopath, "src")
 
 	if err := os.MkdirAll(src, 0755); err != nil {
@@ -30,12 +32,14 @@ func TestBuild(t *testing.T) {
 		"interfacer": {
 			run: func(base string) error {
 				args := []string{
+					"run",
+					"./cmd/interfacer",
 					"-for", `os.File`,
 					"-as", "interfacer.File",
 					"-o", filepath.Join(base, "package.go"),
 				}
 
-				p, err := exec.Command("interfacer", args...).CombinedOutput()
+				p, err := exec.Command("go", args...).CombinedOutput()
 				if err != nil {
 					return fmt.Errorf("%s:\n%s", err, p)
 				}
@@ -51,6 +55,8 @@ func TestBuild(t *testing.T) {
 				}
 
 				args := []string{
+					"run",
+					"./cmd/structer",
 					"-tag", "json",
 					"-as", "structer.Record",
 					"-format", "csv",
@@ -59,7 +65,7 @@ func TestBuild(t *testing.T) {
 
 				var buf bytes.Buffer
 
-				cmd := exec.Command("structer", args...)
+				cmd := exec.Command("go", args...)
 				cmd.Stdin = bytes.NewReader(testdata)
 				cmd.Stdout = &buf
 				cmd.Stderr = &buf
