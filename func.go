@@ -58,9 +58,15 @@ func (f Func) Deps() []string {
 	pkgs := make(map[string]struct{}, 0)
 	for _, in := range f.Ins {
 		pkgs[in.ImportPath] = struct{}{}
+		for _, dep := range in.Deps {
+			pkgs[dep] = struct{}{}
+		}
 	}
 	for _, out := range f.Outs {
 		pkgs[out.ImportPath] = struct{}{}
+		for _, dep := range out.Deps {
+			pkgs[dep] = struct{}{}
+		}
 	}
 	delete(pkgs, "")
 	if len(pkgs) == 0 {

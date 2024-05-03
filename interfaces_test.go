@@ -12,6 +12,10 @@ func TestParseQuery(t *testing.T) {
 			Package:  "os",
 			TypeName: "File",
 		},
+		`testdata.AliasOSGeneric`: {
+			Package:  "testdata",
+			TypeName: "AliasOSGeneric",
+		},
 		`github.com/rjeczalik/interfaces.Query`: {
 			Package:  "github.com/rjeczalik/interfaces",
 			TypeName: "Query",

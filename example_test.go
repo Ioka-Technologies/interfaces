@@ -1,12 +1,15 @@
 package interfaces_test
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/rjeczalik/interfaces"
+	"github.com/rjeczalik/interfaces/testdata/generic"
+	"github.com/rjeczalik/interfaces/testdata/util"
 )
 
 type Generic1[A any] struct {
@@ -52,6 +55,10 @@ func (*ExampleBaz) G(v Generic2[string, io.Writer]) (Generic1[int], int) {
 	return Generic1[int]{}, 0
 }
 
+func (*ExampleBaz) H(ctx context.Context) (*generic.MyGeneric[util.MyUtil], error) {
+	return nil, nil
+}
+
 func ExampleNew() {
 	i, err := interfaces.New(`github.com/rjeczalik/interfaces.ExampleBaz`)
 	if err != nil {
@@ -74,9 +81,14 @@ func ExampleNew() {
 	// E(*[]map[*flag.FlagSet]struct{}, [3]string)
 	// F(interfaces_test.Generic1[io.Writer]) (interfaces_test.Generic2[io.Writer, interfaces_test.ExampleFoo], int)
 	// G(interfaces_test.Generic2[string, io.Writer]) (interfaces_test.Generic1[int], int)
+	// H(context.Context) (*generic.MyGeneric[util.MyUtil], error)
 	// Dependencies:
+	// context
 	// flag
 	// github.com/rjeczalik/interfaces
+	// github.com/rjeczalik/interfaces/testdata/generic
+	// github.com/rjeczalik/interfaces/testdata/util
+
 	// github.com/rjeczalik/interfaces_test
 	// io
 	// net/http

@@ -60,6 +60,9 @@ func (s Struct) Deps() []string {
 	pkgs := make(map[string]struct{}, 0)
 	for i := range s {
 		pkgs[s[i].Type.ImportPath] = struct{}{}
+		for j := range s[i].Type.Deps {
+			pkgs[s[i].Type.Deps[j]] = struct{}{}
+		}
 	}
 	delete(pkgs, "")
 	if len(pkgs) == 0 {
