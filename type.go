@@ -56,7 +56,7 @@ func (typ *Type) setFromType(t types.Type, depth int, orig types.Type) {
 	case *types.Struct:
 		typ.setFromStruct(t)
 	case *types.Named:
-		typ.setFromNamed(t)
+		typ.setFromNamedObject(t)
 	case *types.Signature:
 		typ.IsFunc = true
 		typ.setFromSignature(t)
@@ -69,7 +69,7 @@ func (typ *Type) setFromType(t types.Type, depth int, orig types.Type) {
 		typ.setFromComposite(t, depth, orig)
 		typ.setFromType(t.Key(), depth+1, orig)
 	case *types.Alias:
-		typ.setFromType(t.Underlying(), depth+1, orig)
+		typ.setFromNamedObject(t)
 	case compositeType:
 		typ.setFromComposite(t, depth, orig)
 	default:
@@ -101,31 +101,20 @@ func (typ *Type) setFromSignature(t *types.Signature) {
 	}
 }
 
-func (typ *Type) setFromNamed(t *types.Named) {
+// NamedType is an interface that represents the fields we use from a named type.
+// This interface is used to avoid code duplication when handling types.Named and types.Alias.
+// Alias types need to be handled the same way as named types so we defined this interface.
+type NamedType interface {
+	Obj() *types.TypeName
+	TypeArgs() *types.TypeList
+}
+
+func (typ *Type) setFromNamedObject(t NamedType) {
 	if typ.Name == "" {
 		typ.Name = t.Obj().Name()
-		if typeArgs := t.TypeArgs(); typeArgs != nil && typeArgs.Len() > 0 {
-			argValues := make([]string, typeArgs.Len())
-			for i := 0; i < typeArgs.Len(); i++ {
-				t := typeArgs.At(i)
-				q, _ := ParseQuery(t.String())
-				cfg := &packages.Config{
-					Mode:  packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps,
-					Tests: true,
-				}
-				pkgs, err := packages.Load(cfg, q.Package)
-				if err != nil {
-					fmt.Println(err)
-					return
-				}
-
-				typ.Deps = append(typ.Deps, pkgs[0].Types.Path())
-
-				argValues[i] = fmt.Sprintf("%s.%s", pkgs[0].Types.Name(), q.TypeName)
-			}
-			typ.Name = fmt.Sprintf("%s[%s]", typ.Name, strings.Join(argValues, ", "))
-		}
+		typ.setFromTypeArgs(t.TypeArgs())
 	}
+
 	if typ.Package != "" || typ.ImportPath != "" {
 		return
 	}
@@ -133,6 +122,49 @@ func (typ *Type) setFromNamed(t *types.Named) {
 		typ.Package = pkg.Name()
 		typ.ImportPath = pkg.Path()
 	}
+}
+
+func (typ *Type) setFromTypeArgs(typeArgs *types.TypeList) {
+	if typeArgs == nil || typeArgs.Len() == 0 {
+		return
+	}
+
+	argValues := make([]string, typeArgs.Len())
+	for i := 0; i < typeArgs.Len(); i++ {
+		typeArg := typeArgs.At(i)
+
+		switch t := typeArg.(type) {
+		case *types.Basic:
+			// If the type is a basic type (string, bool, etc) we can just use the type name as the value.
+			// We don't need to add any dependencies for the basic types.
+			argValues[i] = t.Name()
+			continue
+		}
+
+		tString := typeArg.String()
+		q, _ := ParseQuery(tString)
+
+		cfg := &packages.Config{
+			Mode:  packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps | packages.NeedName,
+			Tests: true,
+		}
+		pkgs, err := packages.Load(cfg, q.Package)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		pkg := pkgs[0]
+		typ.Deps = append(typ.Deps, pkg.Types.Path())
+
+		pkgName := pkg.Types.Name()
+		if pkgName == "" {
+			pkgName = path.Base(pkg.Types.Path())
+		}
+
+		argValues[i] = fmt.Sprintf("%s.%s", pkgName, q.TypeName)
+	}
+	typ.Name = fmt.Sprintf("%s[%s]", typ.Name, strings.Join(argValues, ", "))
 }
 
 func (typ *Type) setFromComposite(t compositeType, depth int, orig types.Type) {

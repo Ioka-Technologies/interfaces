@@ -1,8 +1,6 @@
 module github.com/rjeczalik/interfaces
 
-go 1.21.9
-
-toolchain go1.22.2
+go 1.23.0
 
 require golang.org/x/tools v0.20.0
 
