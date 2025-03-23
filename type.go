@@ -5,6 +5,7 @@ import (
 	"go/types"
 	"path"
 	"strings"
+	"sync"
 
 	"golang.org/x/tools/go/packages"
 )
@@ -31,8 +32,29 @@ func (typ Type) String() (s string) {
 	return s + typ.Name
 }
 
+var (
+	typeCache = make(map[string]Type)
+	// This mutex isn't 100% necessary, but it makes me feel better having it to ensure no race conditions.
+	typeCacheMutex sync.RWMutex
+)
+
 func newType(v *types.Var) (typ Type) {
+	key := v.Type().String()
+
+	typeCacheMutex.RLock()
+	typ, ok := typeCache[key]
+	typeCacheMutex.RUnlock()
+
+	if ok {
+		return typ
+	}
+
 	typ.setFromType(v.Type(), 0, nil)
+
+	typeCacheMutex.Lock()
+	typeCache[key] = typ
+	typeCacheMutex.Unlock()
+
 	return typ
 }
 
@@ -124,6 +146,12 @@ func (typ *Type) setFromNamedObject(t NamedType) {
 	}
 }
 
+var (
+	packageCache = make(map[string]*packages.Package)
+	// This mutex isn't 100% necessary, but it makes me feel better having it to ensure no race conditions.
+	packageMutex sync.RWMutex
+)
+
 func (typ *Type) setFromTypeArgs(typeArgs *types.TypeList) {
 	if typeArgs == nil || typeArgs.Len() == 0 {
 		return
@@ -144,17 +172,29 @@ func (typ *Type) setFromTypeArgs(typeArgs *types.TypeList) {
 		tString := typeArg.String()
 		q, _ := ParseQuery(tString)
 
-		cfg := &packages.Config{
-			Mode:  packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps | packages.NeedName,
-			Tests: true,
-		}
-		pkgs, err := packages.Load(cfg, q.Package)
-		if err != nil {
-			fmt.Println(err)
-			return
+		packageMutex.RLock()
+		pkg, ok := packageCache[q.Package]
+		packageMutex.RUnlock()
+
+		if !ok {
+			cfg := &packages.Config{
+				Mode:  packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps | packages.NeedName,
+				Tests: true,
+			}
+
+			pkgs, err := packages.Load(cfg, q.Package)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			pkg = pkgs[0]
+
+			packageMutex.Lock()
+			packageCache[q.Package] = pkg
+			packageMutex.Unlock()
 		}
 
-		pkg := pkgs[0]
 		typ.Deps = append(typ.Deps, pkg.Types.Path())
 
 		pkgName := pkg.Types.Name()
