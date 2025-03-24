@@ -59,6 +59,14 @@ func (*ExampleBaz) H(ctx context.Context) (*generic.MyGeneric[util.MyUtil], erro
 	return nil, nil
 }
 
+func (*ExampleBaz) I(ctx context.Context) (*generic.MyGenericAlias, error) {
+	return nil, nil
+}
+
+func (*ExampleBaz) J(ctx context.Context) (*generic.MyGenericAliasWithTypeArg[int], error) {
+	return nil, nil
+}
+
 func ExampleNew() {
 	i, err := interfaces.New(`github.com/rjeczalik/interfaces.ExampleBaz`)
 	if err != nil {
@@ -73,7 +81,8 @@ func ExampleNew() {
 	for _, dep := range i.Deps() {
 		fmt.Println(dep)
 	}
-	// Output: Interface:
+	// Output:
+	// Interface:
 	// A(int) int
 	// B(*string, io.Writer, interfaces_test.ExampleFoo) (*interfaces_test.ExampleFoo, int)
 	// C(map[string]int, *interfaces.Options, *http.Client) (chan []string, error)
@@ -82,13 +91,14 @@ func ExampleNew() {
 	// F(interfaces_test.Generic1[io.Writer]) (interfaces_test.Generic2[io.Writer, interfaces_test.ExampleFoo], int)
 	// G(interfaces_test.Generic2[string, io.Writer]) (interfaces_test.Generic1[int], int)
 	// H(context.Context) (*generic.MyGeneric[util.MyUtil], error)
+	// I(context.Context) (*generic.MyGenericAlias, error)
+	// J(context.Context) (*generic.MyGenericAliasWithTypeArg[int], error)
 	// Dependencies:
 	// context
 	// flag
 	// github.com/rjeczalik/interfaces
 	// github.com/rjeczalik/interfaces/testdata/generic
 	// github.com/rjeczalik/interfaces/testdata/util
-
 	// github.com/rjeczalik/interfaces_test
 	// io
 	// net/http
