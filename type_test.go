@@ -4,9 +4,10 @@ import "testing"
 
 func Test_fixup(t *testing.T) {
 	cases := map[string]struct {
-		typ   *Type
-		q     *Query
-		fixed string
+		typ     *Type
+		q       *Query
+		pkgName string
+		fixed   string
 	}{
 		"func (s *Sample) String() string": {
 			typ: &Type{
@@ -64,9 +65,25 @@ func Test_fixup(t *testing.T) {
 			},
 			q: &Query{
 				TypeName: "Sample",
-				Package:  "github.com/rjeczalik/interfaces/test/sample",
+				Package:  "github.com/rjeczalik/interfaces/test/sample/data",
 			},
 			fixed: "[]*sample.Bar",
+		},
+		"func (s *Sample) Bars2() []*Bar": {
+			typ: &Type{
+				Name:        "[]*github.com/rjeczalik/interfaces/test/sample.Bar",
+				Package:     "sample",
+				ImportPath:  "github.com/rjeczalik/interfaces/test/sample",
+				IsPointer:   false,
+				IsComposite: true,
+				IsFunc:      false,
+			},
+			q: &Query{
+				TypeName: "Sample",
+				Package:  "github.com/rjeczalik/interfaces/test/sample",
+			},
+			pkgName: "sample",
+			fixed:   "[]*Bar",
 		},
 		"func (s *Sample) WithBar(b *Bar) error": {
 			typ: &Type{
@@ -94,7 +111,7 @@ func Test_fixup(t *testing.T) {
 			},
 			q: &Query{
 				TypeName: "Sample",
-				Package:  "github.com/rjeczalik/interfaces/test/sample",
+				Package:  "github.com/rjeczalik/interfaces/test/sample/data",
 			},
 			fixed: "[]*sample.Bar",
 		},
@@ -214,7 +231,7 @@ func Test_fixup(t *testing.T) {
 			},
 			q: &Query{
 				TypeName: "Client",
-				Package:  "github.com/minio/minio-go/v6",
+				Package:  "github.com/minio/minio-go/v6/pkg/s3utils",
 			},
 			fixed: "[]minio.BucketInfo",
 		},
@@ -223,7 +240,8 @@ func Test_fixup(t *testing.T) {
 	for k, c := range cases {
 		t.Run(k, func(t *testing.T) {
 			options := &Options{
-				Query: c.q,
+				Query:       c.q,
+				PackageName: c.pkgName,
 			}
 			fixup(c.typ, options)
 

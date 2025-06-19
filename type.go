@@ -231,19 +231,16 @@ func fixup(typ *Type, opts *Options) {
 
 	// when include other package struct
 	if typ.ImportPath != "" && typ.IsComposite {
-		if typ.ImportPath == query.Package {
-			typ.Name = strings.Replace(typ.Name, typ.ImportPath, typ.Package, -1)
-		}
-
-		if typ.ImportPath != query.Package {
-			pkgIdx := strings.LastIndex(typ.ImportPath, typ.Package)
-			if 0 < pkgIdx {
-				typ.Name = strings.Replace(typ.Name, typ.ImportPath[:pkgIdx], "", -1)
-			}
+		if typ.ImportPath == query.Package && typ.Package == packageName {
+			// Type is from the same package as the output, strip the import path and package name
+			typ.Name = strings.ReplaceAll(typ.Name, typ.ImportPath+".", "")
+			typ.Name = strings.ReplaceAll(typ.Name, typ.Package+".", "")
+		} else if typ.ImportPath != query.Package {
+			// Type is from a different package, replace import path with package name
+			typ.Name = strings.ReplaceAll(typ.Name, typ.ImportPath, typ.Package)
 		}
 	}
 
-	typ.Name = strings.Replace(typ.Name, query.Package, path.Base(query.Package), -1)
 	typ.ImportPath = trimVendorPath(typ.ImportPath)
 
 	if typ.Package == packageName {
